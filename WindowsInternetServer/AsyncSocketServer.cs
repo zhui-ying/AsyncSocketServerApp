@@ -1,4 +1,5 @@
-﻿using System;
+﻿//直接使用Socket的异步接收方法实现TCP/IP 的异步连接服务器
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,7 +11,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Collections;
 
-namespace AsyncSocketServerApp
+namespace AsyncSocketServername
 {
     class AsyncSocketServer
     {
@@ -22,7 +23,7 @@ namespace AsyncSocketServerApp
         public event SendMsg OnSend;
         public delegate void ExceptionMsg(string IP_addr, int port, Exception e);//发生异常函数
         public event ExceptionMsg OnException;
-        #endregion 
+        #endregion
 
         #region 私有成员
         private Socket socket;
@@ -30,7 +31,7 @@ namespace AsyncSocketServerApp
         static private bool bListening = false;
         Thread thread;
         System.Windows.Forms.Timer updata_time;
-        
+
         #endregion
 
         #region 公共方法
@@ -48,8 +49,12 @@ namespace AsyncSocketServerApp
 
         ~AsyncSocketServer()//析构函数
         {
-            socket.Shutdown(SocketShutdown.Both);
-            socket.Close();
+            try
+            {
+                socket.Shutdown(SocketShutdown.Both);
+                socket.Close();
+            }
+            catch { }
         }
 
         public void StartListen()//开始监听
@@ -74,6 +79,7 @@ namespace AsyncSocketServerApp
                 socket.Close();
                 thread.Abort();
                 bListening = false;
+                clients.Clear();
             }
         }
 
@@ -96,7 +102,7 @@ namespace AsyncSocketServerApp
             foreach (Object obj in clients)
             {
                 Client client = (Client)obj;
-                ip_port = new IP_Port(client.IP_addr,client.Port);
+                ip_port = new IP_Port(client.IP_addr, client.Port);
                 client_list.Add(ip_port);
             }
             return client_list;
@@ -153,7 +159,7 @@ namespace AsyncSocketServerApp
                 }
                 handler.BeginReceive(client.rec_buffer, 0, Client.BufferSize, 0, new AsyncCallback(ReadCallback), client);
             }
-            catch(Exception re)
+            catch (Exception re)
             { OnException(client.IP_addr, client.Port, re); }
         }
 
@@ -173,14 +179,15 @@ namespace AsyncSocketServerApp
             if (clients.Count == 0) return;
             for (int i = 0; i < clients.Count; i++)
             {
-                Socket socket = (Socket)clients[i];
-                if (((socket.Poll(1000, SelectMode.SelectRead) && (socket.Available == 0)) || !socket.Connected)) //连接中断
+                Client client = (Client)clients[i];
+                if (((client.socket.Poll(1000, SelectMode.SelectRead) && (client.socket.Available == 0)) || !client.socket.Connected)) //连接中断
                 {
-                    socket.Shutdown(SocketShutdown.Both);
-                    socket.Close();
+                    client.socket.Shutdown(SocketShutdown.Both);
+                    
                     //MessageBox.Show((socket.RemoteEndPoint as IPEndPoint).Address.ToString() + ":" + (socket.RemoteEndPoint as IPEndPoint).Port.ToString() + "连接中断");
-                    clients.Remove(socket);
-                }      
+                    clients.Remove(client);
+                    client.socket.Close();
+                }
             }
         }
 
@@ -211,7 +218,8 @@ namespace AsyncSocketServerApp
         {
             get
             {
-                _port = (socket.RemoteEndPoint as IPEndPoint).Port;
+                try { _port = (socket.RemoteEndPoint as IPEndPoint).Port; }
+                catch { }
                 return _port;
             }
         }
@@ -220,7 +228,9 @@ namespace AsyncSocketServerApp
         {
             get
             {
-                _IP_addr = (socket.RemoteEndPoint as IPEndPoint).Address.ToString();
+                try { _IP_addr = (socket.RemoteEndPoint as IPEndPoint).Address.ToString(); }
+                catch { }
+                
                 return _IP_addr;
             }
         }
@@ -262,7 +272,6 @@ namespace AsyncSocketServerApp
             try
             {
                 socket.Shutdown(SocketShutdown.Both);
-                socket.Close();
                 socket.Close();
             }
             catch

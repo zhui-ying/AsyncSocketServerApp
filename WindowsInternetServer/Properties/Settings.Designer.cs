@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace AsyncSocketServerApp.Properties
+namespace WindowsInternetServer.Properties
 {
 
 
